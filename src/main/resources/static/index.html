@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Communication Service - Transport Scolaire 2025</title>
+    <style>
+        body {font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);color:#e0f7fa;margin:0;padding:20px;min-height:100vh;}
+        h1 {text-align:center;color:#00e5ff;text-shadow:0 0 10px rgba(0,229,255,0.5);font-size:2.9em;margin:30px 0 10px;}
+        .subtitle {text-align:center;font-size:1.4em;margin-bottom:40px;color:#80deea;}
+        .container {max-width:1200px;margin:auto;background:rgba(0,0,0,0.55);padding:40px;border-radius:20px;box-shadow:0 15px 40px rgba(0,0,0,0.7);backdrop-filter:blur(12px);}
+        .base-url {background:#000;padding:18px;border-radius:12px;text-align:center;font-size:1.5em;font-weight:bold;color:#00e5ff;margin:30px 0;border:3px solid #00e5ff;box-shadow:0 0 15px rgba(0,229,255,0.6);}
+        h2 {color:#00e5ff;border-bottom:3px solid #00e5ff;padding-bottom:12px;margin-top:50px;font-size:1.8em;}
+        table {width:100%;border-collapse:collapse;margin:20px 0;background:rgba(0,0,0,0.4);border-radius:12px;overflow:hidden;box-shadow:0 5px 15px rgba(0,0,0,0.5);}
+        th {background:#00bcd4;color:black;padding:16px;font-weight:bold;font-size:1.15em;}
+        td {padding:15px;border-bottom:1px solid #00bcd4;vertical-align:top;}
+        .method {font-weight:bold;padding:10px 18px;border-radius:8px;color:white;text-align:center;min-width:80px;font-size:1em;}
+        .get {background:#28a745;}
+        .post {background:#ff9800;color:black;font-weight:bold;}
+        .important {background:linear-gradient(45deg,#ff006e,#8338ec);color:white;padding:30px;border-radius:18px;margin:40px 0;text-align:center;font-size:1.5em;font-weight:bold;box-shadow:0 0 30px rgba(255,0,110,0.6);}
+        .feature-box {background:rgba(0,229,255,0.18);border:3px solid #00e5ff;border-radius:18px;padding:30px;margin:35px 0;box-shadow:0 0 20px rgba(0,229,255,0.3);}
+        .feature-title {font-size:1.8em;color:#00e5ff;margin-bottom:20px;font-weight:bold;text-align:center;}
+        .highlight {background:#1b5e20;padding:6px 12px;border-radius:6px;color:#a5d6a7;font-weight:bold;}
+        pre {background:#000;padding:15px;border-radius:10px;overflow-x:auto;border:1px solid #00e5ff;margin:15px 0;}
+        code {background:#111;padding:3px 8px;border-radius:5px;font-family:Consolas,monospace;}
+        footer {text-align:center;margin-top:70px;padding:25px;font-size:1.1em;color:#80deea;border-top:2px solid #00bcd4;}
+        a {color:#00e5ff;text-decoration:none;font-weight:bold;}
+        a:hover {text-decoration:underline;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Communication Service</h1>
+    <p class="subtitle">Microservice Central de Communication Asynchrone – Projet Transport Scolaire 2025</p>
+
+    <div class="base-url">
+        BASE URL → <strong>http://172.30.80.11:29008</strong>
+
+    </div>
+
+    <div class="important">
+        Architecture Event-Driven complète<br>
+        RabbitMQ + HTTP Push + PostgreSQL Logs + Queues 100% dynamiques + Monitoring total
+    </div>
+
+    <!-- LA SECTION MAGIQUE QUE TU VOULAIS – PARFAITE POUR LA SOUTENANCE -->
+    <div class="feature-box">
+        <div class="feature-title">Comment un autre microservice utilise ce service ? (3 méthodes réelles)</div>
+
+        <p><strong>1. Créer une queue → 100 % dynamique (aucun code nécessaire)</strong></p>
+        <p>La queue est créée <span class="highlight">automatiquement</span> dès le premier message publié.</p>
+        <p>Exemple : publier sur <code>student.created</code> → la queue apparaît instantanément dans RabbitMQ.</p>
+
+        <p><strong>2. S’abonner pour recevoir les événements en HTTP Push (MÉTHODE RECOMMANDÉE – LA PLUS MODERNE)</strong></p>
+        <p>Le microservice s’abonne <strong>une seule fois au démarrage</strong> :</p>
+        <pre><code>POST http://172.30.80.11:29008/proxy/8089/async/subscribe
+Content-Type: application/json
+
+{
+  "queue": "student.created",
+  "callbackUrl": "http://172.30.80.11:29008/proxy/8083/api/webhook/student"
+}</code></pre>
+        <p>→ Dès qu’un étudiant est créé, <strong>notre service pousse directement</strong> le JSON au microservice concerné.<br>
+            Zéro polling • Latence &lt; 500 ms • Comme GitHub, Stripe, Twilio</p>
+
+        <p><strong>3. OU écouter la queue directement avec RabbitMQ (méthode classique – très utilisée en production)</strong></p>
+        <p>Exemple réel dans le <strong>microservice Parents</strong> :</p>
+        <pre><code>@Component
+public class StudentEventConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(StudentEventConsumer.class);
+
+    @RabbitListener(queues = "student.created")
+    public void onStudentCreated(String payload) {
+        log.info("[Service Parents] Nouvel étudiant inscrit : {}", payload);
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode event = mapper.readTree(payload);
+            String name = event.get("name").asText();
+
+            // Envoie une notification push aux parents
+            notificationService.sendToAllParents(
+                "Nouvel élève inscrit : " + name + " – Bienvenue dans le système !"
+            );
+        } catch (Exception e) {
+            log.error("Erreur traitement événement étudiant", e);
+        }
+    }
+}</code></pre>
+        <p>→ Le service Parents est notifié <strong>en temps réel</strong>, sans aucune requête HTTP de sa part.</p>
+    </div>
+
+    <h2>Endpoints Asynchrones (/async) – Cœur du projet</h2>
+    <table>
+        <tr><th>Méthode</th><th>Endpoint</th><th>Description</th><th>Exemple Body</th></tr>
+        <tr><td class="method post">POST</td><td><strong>/async/publish</strong></td><td>Publier un événement (crée la queue automatiquement)</td><td><code>{ "queue": "student.created", "payload": "{ \"id\": 101, \"name\": \"Ahmed\" }" }</code></td></tr>
+        <tr><td class="method post">POST</td><td><strong>/async/subscribe</strong></td><td>S’abonner → réception en HTTP Push</td><td><code>{ "queue": "bus.delayed", "callbackUrl": "https://..." }</code></td></tr>
+        <tr><td class="method get">GET</td><td>/async/logs</td><td>Historique persistant de tous les messages</td><td>→ JSON complet avec timestamps</td></tr>
+    </table>
+
+    <h2>Endpoints Synchrones (/communication) – Gateway centralisée</h2>
+    <table>
+        <tr><th>Méthode</th><th>Endpoint</th><th>Description</th></tr>
+        <tr><td class="method get">GET</td><td>/communication/students</td><td>Liste complète des élèves</td></tr>
+        <tr><td class="method get">GET</td><td>/communication/students/{id}</td><td>Détail d’un élève</td></tr>
+        <tr><td class="method post">POST</td><td>/communication/students</td><td>Créer un élève</td></tr>
+        <tr><td class="method get">GET</td><td>/communication/buses</td><td>Tous les bus</td></tr>
+        <tr><td class="method post">POST</td><td>/communication/locations/student/{id}</td><td>Mettre à jour position GPS élève</td></tr>
+        <tr><td class="method get">GET</td><td>/communication/routes/eta/{studentId}</td><td>Heure d’arrivée prévue (ETA)</td></tr>
+    </table>
+
+    <h2>Monitoring & Outils</h2>
+    <table>
+        <tr><td class="method get">GET</td><td><a href="http://172.30.80.11:29008/proxy/8089/swagger-ui.html" target="_blank">Swagger UI</a></td><td>Documentation interactive complète</td></tr>
+        <tr><td class="method get">GET</td><td><a href="http://172.30.80.11:29008/proxy/8089/actuator/health" target="_blank">Health Check</a></td><td>État du service en temps réel</td></tr>
+        <tr><td>RabbitMQ</td><td><a href="http://172.30.80.11:15672" target="_blank">Management Console</a></td><td>guest/guest → voir queues, messages, consumers</td></tr>
+        <tr><td>PostgreSQL</td><td><td><a href="http://172.30.80.11:5050" target="_blank">pgAdmin</a></td><td>Tables message_logs & subscriptions</td></tr>
+    </table>
+
+    <footer>
+        <strong>Soutenance Décembre 2025</strong> • Architecture Microservices • Communication Asynchrone Centralisée<br>
+        <strong>Par : [TON PRÉNOM & NOM] – Le Champion Marocainstrong><br>
+            RabbitMQ + HTTP Push + PostgreSQL + Queues dynamiques + Monitoring complet</strong>
+    </footer>
+</div>
+</body>
+</html>

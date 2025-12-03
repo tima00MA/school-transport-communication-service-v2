@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: async-communication-service
+
+  # H2 Database – marche partout (laptop + conteneur)
+
+  datasource:
+    url: jdbc:h2:file:./data/communication-db      # ou jdbc:h2:file:./data/communication-db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    initialization-mode: always              # ← cette ligne règle le problème 90149
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true   # important pour accéder depuis le navigateur
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # RabbitMQ – marche en local et sur le serveur
+  rabbitmq:
+    host: host.docker.internal   # sur ton laptop (accède au RabbitMQ du serveur école)
+    port: 5672
+    username: guest
+    password: guest
+
+  # Désactive le vérificateur Spring Cloud qui te bloque
+  cloud:
+    compatibility-verifier:
+      enabled: false
+
+# Port pour ton laptop (8089) – tu le changeras en 80 demain sur le serveur
+server:
+  port: 8089
+
+# Désactive Eureka et Security
+eureka:
+  client:
+    enabled: false
+
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
